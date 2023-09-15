@@ -1,0 +1,8 @@
+pandas
+python-dotenv
+termcolor
+coverage
+mypy
+flake8
+argparse
+scikit-learn
