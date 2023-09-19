@@ -8,3 +8,5 @@ argparse
 scikit-learn
 spacy
 wordcloud
+nltk
+seaborn
