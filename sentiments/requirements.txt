@@ -6,3 +6,5 @@ mypy
 flake8
 argparse
 scikit-learn
+spacy
+wordcloud
