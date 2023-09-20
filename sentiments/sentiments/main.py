@@ -6,12 +6,9 @@ from typing import List
 from time import sleep
 from decimal import Decimal
 import matplotlib.pyplot as plt
+import argparse
 import pprint
-spp = pprint.PrettyPrinter(indent=4)
-
 import warnings
-warnings.filterwarnings("ignore", "is_categorical_dtype")
-warnings.filterwarnings("ignore", "use_inf_as_na")
 
 from termcolor import colored
 import pandas as pd
@@ -27,6 +24,9 @@ LOG_FORMAT_INFO = colored('[%(filename)s#%(funcName)s:%(lineno)d]', 'white', att
 LOG_FORMAT_SIMPLE = colored('[%(levelname)s]', 'magenta', attrs=['bold', 'dark']) + ' %(message)s'
 DEFAULT_LOGGER_NAME = "sentiments"
 DATETIME_FORMAT = "%Y-%m-%dT%H-%M-%S"
+spp = pprint.PrettyPrinter(indent=4)
+warnings.filterwarnings("ignore", "is_categorical_dtype")
+warnings.filterwarnings("ignore", "use_inf_as_na")
 
 
 def get_logger_factory():
@@ -84,9 +84,10 @@ def print_data(reviews, train, train_test, train_class, test_class) -> None:
     count_reviews = reviews.sentiment.value_counts()
     logger.info(f"Sentiment value count --> neg: {count_reviews['neg']} -- pos: {count_reviews['pos']}")
 
-def simple_example() -> None: 
+def classify_simple_example() -> None: 
     text = ["Assisti um filme ótimo", "Assisti um filme ruim"]
 
+    vectorizer = CountVectorizer(lowercase=False)
     bw = vectorizer.fit_transform(text)
     logger.info("Bag of words:")
     print(bw)
@@ -100,6 +101,34 @@ def simple_example() -> None:
     print("-----------------------")
     print("-----------------------")
     print("")
+
+
+def focus_stopwords() -> None:
+    focus = reviews.iloc[:5, :]
+    print(focus)
+    print(".......................")
+    focus["pre-processed_removed-stopwords"] = remove_stopwords(opnions=focus.text_pt)
+    print(focus)
+    spp.pprint(focus.iloc[2:3, 2].tolist())
+    print(".......................")
+    spp.pprint(focus.iloc[2:3, 5].tolist())
+
+
+def remove_stopwords_by_tutor_style(opnions: pd.core.series.Series) -> List[str]:
+    # Original implementation of tutor
+    meaningless_words = corpus.stopwords.words("portuguese")
+    wt = tokenize.WhitespaceTokenizer()
+    processed_phrase = []
+    for opnion in opnions:
+        words = wt.tokenize(opnion)
+        opnion_without_stopwords = []
+        for word in words:
+            if word not in meaningless_words:
+                opnion_without_stopwords.append(word)
+
+        processed_phrase.append(' '.join(opnion_without_stopwords))
+
+    return processed_phrase
 
 
 def classify_text(text: pd.DataFrame, column_text: str, column_classification, max_features: int = 50, random_state: int = 42) -> Decimal:
@@ -156,18 +185,9 @@ def pareto(phrase: str, figsize: tuple = (12, 8), color_frequence: str = 'grey',
 
 
 def remove_stopwords(opnions: pd.core.series.Series, meaningless_words: List[str] = corpus.stopwords.words("portuguese"), wt: tokenize.WhitespaceTokenizer = tokenize.WhitespaceTokenizer()) -> List[str]:
-    # # Original implementation of tutor
-    # meaningless_words = corpus.stopwords.words("portuguese")
-    # wt = tokenize.WhitespaceTokenizer()
-    # processed_phrase = []
-    # for opnion in opnions:
-    #     words = wt.tokenize(opnion)
-    #     opnion_without_stopwords = []
-    #     for word in words:
-    #         if word not in meaningless_words:
-    #             opnion_without_stopwords.append(word)
-
-    #         processed_phrase.append(' '.join(opnion_without_stopwords))
+    """
+    Pre-process an opnion to be used in classification. By default use basic stopwords from nltk corpus and white space tokenize.
+    """
 
     return [' '.join([word for word in wt.tokenize(opnion) if word not in meaningless_words]) for opnion in opnions]
 
@@ -179,45 +199,32 @@ if __name__ == "__main__":
     * Test - use model to our purpose.
     """
 
+    parser = argparse.ArgumentParser(description="Alura NLP", epilog="Study only")
+    parser.add_argument("action", choices=["classify", "tci", "pareto", "stopwords"], help="Available options")
+    parser.add_argument("--compl", help="Complement main action")
+    args = parser.parse_args()
+    logger.info(f"Executing {colored(args.action, 'red', attrs=['bold', 'dark'])} with complement of {colored(args.compl, 'yellow', attrs=['bold', 'dark'])}")
+
     reviews = pd.read_csv("data/imdb-reviews-pt-br.csv")
     reviews["classification"] = reviews["sentiment"].replace(["neg", "pos"], [0, 1])
 
-    # print("-----------------------")
-    # print("-----------------------")
-    # print("")
-
-    # print(f"Classified text is: {classify_text(reviews, 'text_pt', 'classification')}")
-
-    # text_cloud_image(reviews=reviews)
-    # text_cloud_image(reviews=reviews.query("sentiment == 'pos'"))
-    # text_cloud_image(reviews=reviews.query("sentiment == 'neg'"))
-
-    # logger.info("NLTK Process:")
-    # pareto(phrase=' '.join([text for text in reviews.text_pt]), quantity=20, color_frequence='yellow', color_percentage='green')
-
-    # removed_stopwords = remove_stopwords(opnions=reviews.text_pt)
-    # reviews["pre-processed_removed-stopwords"] = removed_stopwords
-    # print(reviews)
-    # spp.pprint(removed_stopwords[2])
-    # spp.pprint(reviews.text_pt[2])
-    # rsw = remove_stopwords(reviews.iloc[2:3, 2])
-    # spp.pprint(reviews.iloc[2:3, 2].tolist())
-    # print(".......................")
-    # spp.pprint(rsw)
-    focus = reviews.iloc[:4, :]
-    print(focus)
-    print(".......................")
-    focus["pre-processed_removed-stopwords"] = remove_stopwords(opnions=focus.text_pt)
-    print(focus)
-    spp.pprint(focus.iloc[2:3, 2].tolist())
-    spp.pprint(focus.iloc[2:3, 5].tolist())
-    breakpoint()
-
-    # TODO implement classify_text and pareto to pre-processed stopwords.
-    ctxt = classify_text(focus, 'pre-processed_removed-stopwords', 'classification')
-    
-    print("-----------------------")
-    print("-----------------------")
-    print("")
+    if args.action == "classify":
+        print(f"Classified text is: {classify_text(reviews, 'text_pt', 'classification')}")
+    elif args.action == "tci":
+        if args.compl == "full":
+            text_cloud_image(reviews=reviews)
+        elif args.compl == "pos":
+            text_cloud_image(reviews=reviews.query("sentiment == 'pos'"))
+        elif args.compl == "neg":
+            text_cloud_image(reviews=reviews.query("sentiment == 'neg'"))
+        else:
+            logger.error(f"No option found. actions: {args.action} compl: {args.compl}")
+    elif args.action == "pareto":
+        logger.info("NLTK Process:")
+        pareto(phrase=' '.join([text for text in reviews.text_pt]), quantity=20, color_frequence='yellow', color_percentage='green')
+    elif args.action == "stopwords":
+        reviews["removed_stopwords"] = remove_stopwords(opnions=reviews.text_pt)
+        print(f"Classified text is: {classify_text(reviews, 'removed_stopwords', 'classification')}")
+        pareto(phrase=' '.join([text for text in reviews.removed_stopwords]), quantity=20, color_frequence='red', color_percentage='blue')
 
     sys.exit(0)
