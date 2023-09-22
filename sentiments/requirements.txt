@@ -10,3 +10,4 @@ spacy
 wordcloud
 nltk
 seaborn
+unidecode

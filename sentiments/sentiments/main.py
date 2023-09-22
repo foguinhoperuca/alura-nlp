@@ -7,10 +7,11 @@ from time import sleep
 
 from termcolor import colored
 import pandas as pd
+from nltk import tokenize
 
 from util import initialize_logger, spp
 from preprocess import classify_text, text_cloud_image, pareto, remove_stopwords
-from course_examples import count_values_pos_neg, classify_simple_example, focus_stopwords, remove_stopwords_by_tutor_style, tokenize_ponctuation
+from course_examples import count_values_pos_neg, classify_simple_example, focus_stopwords, remove_stopwords_by_tutor_style, tokenize_punctuation, preprocess_punctuation, text_normatization, stemmer_example
 
 
 if __name__ == "__main__":
@@ -37,9 +38,41 @@ if __name__ == "__main__":
     elif args.action == "pareto":
         pareto(phrase=' '.join([text for text in reviews.text_pt]), quantity=20, color_frequence='yellow', color_percentage='green')
     elif args.action == "stopwords":
-        reviews["removed_stopwords"] = remove_stopwords(opnions=reviews.text_pt)
-        print(f"Classified text is: {classify_text(reviews, 'removed_stopwords', 'classification')}")
-        pareto(phrase=' '.join([text for text in reviews.removed_stopwords]), quantity=20, color_frequence='red', color_percentage='blue')
+        logger.info("Removing stopwords...")
+        reviews["removed_stopwords"] = remove_stopwords(opnions=reviews.text_pt, meaningless_words=None, wt=tokenize.WordPunctTokenizer())
+        logger.info("Removed stopwords")
+        reviews["removed_stopwords_without_lower"] = remove_stopwords(opnions=reviews.text_pt, meaningless_words=None, wt=tokenize.WordPunctTokenizer(), lower=False)
+        logger.info("Removed stopwords without lower")
+        reviews["removed_stopwords_without_stemmer"] = remove_stopwords(opnions=reviews.text_pt, meaningless_words=None, wt=tokenize.WordPunctTokenizer(), lower=True, stemmer=None)
+        logger.info("Removed stopwords without stemmer")
+        reviews["removed_stopwords_without_lower_stemmer"] = remove_stopwords(opnions=reviews.text_pt, meaningless_words=None, wt=tokenize.WordPunctTokenizer(), lower=False, stemmer=None)
+        logger.info("Removed stopwords without lower and stemmer")
+
+        print(reviews["text_pt"][0])
+        print("...........................................")
+        print(reviews["removed_stopwords"][0])
+        print("...........................................")
+        print(reviews["removed_stopwords_without_lower"][0])
+        print("...........................................")
+        print(reviews["removed_stopwords_without_stemmer"][0])
+        print("...........................................")
+        print(reviews["removed_stopwords_without_lower_stemmer"][0])
+        print("")
+        print("")
+
+        # FIXME WITHOUT LOWER: 0.6892033966841893; with lower: 0.6878285483218762. Why!? (no stemmer here)
+        print(f"Classified text accuracy removed_stopwords is: {classify_text(reviews, 'removed_stopwords', 'classification')}")
+        print(f"Classified text accuracy removed_stopwords_without_lower is: {classify_text(reviews, 'removed_stopwords_without_lower', 'classification')}")
+        print(f"Classified text accuracy removed_stopwords_without_stemmer is: {classify_text(reviews, 'removed_stopwords_without_stemmer', 'classification')}")
+        print(f"Classified text accuracy removed_stopwords_without_lower_stemmer is: {classify_text(reviews, 'removed_stopwords_without_lower_stemmer', 'classification')}")
+
+        logger.info("Text cloud image for negative reviews.")
+        text_cloud_image(reviews=reviews.query("sentiment == 'neg'"), column="removed_stopwords", width=800, height=500)
+        logger.info("Text cloud image for posite reviews.")
+        text_cloud_image(reviews=reviews.query("sentiment == 'pos'"), column="removed_stopwords", width=800, height=500)
+
+        logger.info("Pareto representation.")
+        pareto(phrase=" ".join([text for text in reviews.removed_stopwords]), quantity=10, color_frequence="purple", color_percentage="gray", wt=tokenize.WordPunctTokenizer())
     elif args.action == "course_example":
         if args.compl == "count_values_pos_neg":
             count_values_pos_neg(reviews=reviews)
@@ -52,8 +85,14 @@ if __name__ == "__main__":
             by_myself = remove_stopwords(opnions=reviews.text_pt)
             assert by_tutor == by_myself
             logger.info(f"len of remove_stopwords by tutor: {len(by_tutor)} by myself: {len(by_myself)}")
-        elif args.compl == "tokenize_ponctuation":
-            print(f"tokenize_ponctuation 01: {tokenize_ponctuation()}")
-            print(f"tokenize_ponctuation 02: {tokenize_ponctuation(phrase='Separando a pontuação das palavras. Passo simples!!')}")
+        elif args.compl == "tokenize_punctuation":
+            print(f"tokenize_punctuation 01: {tokenize_punctuation()}")
+            print(f"tokenize_punctuation 02: {tokenize_punctuation(phrase='Separando a pontuação das palavras. Passo simples!!')}")
+        elif args.compl == "preprocess_punctuation":
+            preprocess_punctuation()
+        elif args.compl == "text_normatization":
+            text_normatization()
+        elif args.compl == "stemmer_example":
+            stemmer_example()
 
     sys.exit(0)

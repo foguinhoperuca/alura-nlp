@@ -1,5 +1,6 @@
-from typing import List, Any
+from typing import List, Any, Union
 from decimal import Decimal
+from string import punctuation
 
 import warnings
 
@@ -9,8 +10,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_extraction.text import CountVectorizer
 from wordcloud import WordCloud
-from nltk import FreqDist, tokenize, corpus
+from nltk import FreqDist, tokenize, corpus, RSLPStemmer
 import seaborn as sns
+import unidecode
 
 from util import get_logger_factory
 
@@ -19,7 +21,7 @@ warnings.filterwarnings("ignore", "use_inf_as_na")
 logger = get_logger_factory()
 
 
-def classify_text(text: pd.DataFrame, column_text: str, column_classification, max_features: int = 50, random_state: int = 42) -> Decimal:
+def classify_text(text: pd.DataFrame, column_text: str, column_classification: str, max_features: int = 50, random_state: int = 42) -> Decimal:
     """Classify text to determine sentiment.
     Vocabulary:
     * Train -teach ML model.
@@ -38,10 +40,10 @@ def classify_text(text: pd.DataFrame, column_text: str, column_classification, m
     return accuracy
 
 
-def text_cloud_image(reviews: pd.DataFrame, width: int = 1900, height: int = 1500, max_font_size: int = 110, collocations: bool = False) -> None:
+def text_cloud_image(reviews: pd.DataFrame, column: str = 'text_pt', width: int = 1900, height: int = 1500, max_font_size: int = 110, collocations: bool = False) -> None:
     """Show a cloud of text in a image to get insights."""
 
-    all_words: str = ' '.join([text for text in reviews.text_pt])
+    all_words: str = ' '.join([text for text in reviews[column]])
     word_cloud: WordCloud = WordCloud(width=width, height=height, max_font_size=max_font_size, collocations=collocations).generate(all_words)
     plt.figure(figsize=(20,15))
     plt.imshow(word_cloud, interpolation='bilinear')
@@ -49,11 +51,10 @@ def text_cloud_image(reviews: pd.DataFrame, width: int = 1900, height: int = 150
     plt.show()
 
 
-def pareto(phrase: str, figsize: tuple = (12, 8), color_frequence: str = 'grey', color_percentage: str = 'red', quantity: int = 10) -> None:
+def pareto(phrase: str, figsize: tuple = (12, 8), color_frequence: str = 'grey', color_percentage: str = 'red', quantity: int = 10, wt: Union[tokenize.WhitespaceTokenizer, tokenize.WordPunctTokenizer] = tokenize.WhitespaceTokenizer()) -> None:
     """Show the N more used words and plot it with pareto
     distribution line."""
 
-    wt = tokenize.WhitespaceTokenizer()
     freq_dist = FreqDist(wt.tokenize(phrase))
     df = pd.DataFrame({"Word": list(freq_dist.keys()), "Frequence": list(freq_dist.values())})
 
@@ -80,10 +81,12 @@ def pareto(phrase: str, figsize: tuple = (12, 8), color_frequence: str = 'grey',
     plt.show()
 
 
-def remove_stopwords(opnions: pd.core.series.Series, meaningless_words: List[str] = corpus.stopwords.words("portuguese"), wt: tokenize.WhitespaceTokenizer = tokenize.WhitespaceTokenizer()) -> List[str]:
+def remove_stopwords(opnions: pd.core.series.Series, meaningless_words: Union[List[str], None] = corpus.stopwords.words("portuguese"), wt: Union[tokenize.WhitespaceTokenizer, tokenize.WordPunctTokenizer] = tokenize.WhitespaceTokenizer(), lower: bool = True, stemmer: RSLPStemmer = RSLPStemmer()) -> List[str]:
     """Pre-process an opnion to be used in classification. By default
-    use basic stopwords from nltk corpus and white space tokenize."""
+    use basic stopwords from nltk corpus and white space tokenize. Also,
+    remove punctuation and accents and use all words in lower case."""
 
-    return [' '.join([word for word in wt.tokenize(opnion) if word not in meaningless_words]) for opnion in opnions]
+    meaningless_words = [punct for punct in punctuation] + list(set(corpus.stopwords.words("portuguese") + [unidecode.unidecode(stopwords) for stopwords in corpus.stopwords.words("portuguese")])) if meaningless_words is None else meaningless_words
 
-
+    # FIXME lower, remove accent (and all pre-process) is applied in opion too or only in meaningless words?!
+    return [' '.join([word if stemmer is None else stemmer.stem(word) for word in wt.tokenize(opnion.lower() if lower else opnion) if word not in meaningless_words]) for opnion in opnions]

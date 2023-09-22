@@ -1,9 +1,11 @@
 from time import sleep
 from typing import List
+from string import punctuation
 
 import pandas as pd
-from nltk import FreqDist, tokenize, corpus
+from nltk import FreqDist, tokenize, corpus, RSLPStemmer
 from sklearn.feature_extraction.text import CountVectorizer
+import unidecode
 
 from util import get_logger_factory, spp
 from preprocess import remove_stopwords
@@ -71,8 +73,28 @@ def remove_stopwords_by_tutor_style(opnions: pd.core.series.Series) -> List[str]
     return processed_phrase
 
 
-def tokenize_ponctuation(phrase: str = "Olá Mundo!") -> tokenize.WordPunctTokenizer:
+def tokenize_punctuation(phrase: str = "Olá Mundo!") -> tokenize.WordPunctTokenizer:
     token_ponctuation = tokenize.WordPunctTokenizer()
     tf = token_ponctuation.tokenize(phrase)
 
     return tf
+
+
+def preprocess_punctuation() -> None:
+    print(punctuation)
+    puncts = [punct for punct in punctuation]
+    print(puncts)
+
+
+def text_normatization() -> None:
+    accents = "Ótimo pésssimo não é tão são vão lá no Güido ê chapéu"
+    print(unidecode.unidecode(accents))
+    meaningless_words = [punct for punct in punctuation] + list(set(corpus.stopwords.words("portuguese") + [unidecode.unidecode(stopwords) for stopwords in corpus.stopwords.words("portuguese")]))
+    spp.pprint(sorted(meaningless_words))
+
+
+def stemmer_example() -> None:
+    stemmer = RSLPStemmer()
+    print(f"Stem from corredor is: {stemmer.stem('corredor')=}")
+    print(f"Stem from corre is: {stemmer.stem('corre')=}")
+    print(f"Stem from correria is: {stemmer.stem('correria')=}")
