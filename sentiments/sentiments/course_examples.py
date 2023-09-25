@@ -2,10 +2,10 @@ from time import sleep
 from typing import List
 from string import punctuation
 
-import pandas as pd
-from nltk import FreqDist, tokenize, corpus, RSLPStemmer
-from sklearn.feature_extraction.text import CountVectorizer
 import unidecode
+import pandas as pd
+from nltk import FreqDist, tokenize, corpus, RSLPStemmer, ngrams
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 
 from util import get_logger_factory, spp
 from preprocess import remove_stopwords
@@ -93,8 +93,28 @@ def text_normatization() -> None:
     spp.pprint(sorted(meaningless_words))
 
 
-def stemmer_example() -> None:
+def stemmer_example(words: List[str] = ["corredor", "corre", "correria"]) -> None:
     stemmer = RSLPStemmer()
-    print(f"Stem from corredor is: {stemmer.stem('corredor')=}")
-    print(f"Stem from corre is: {stemmer.stem('corre')=}")
-    print(f"Stem from correria is: {stemmer.stem('correria')=}")
+    for word in words:
+        print(f"Stem from **{word}** is: {stemmer.stem(word)=}")
+
+
+def tfidf_example(phrases: List[str] = ["Assisti um filme ótimo", "Assisti um filme péssimo"]) -> None:
+    tfidf = TfidfVectorizer(lowercase=False, max_features=50)
+    characteristics = tfidf.fit_transform(phrases)
+    df = pd.DataFrame(characteristics.todense(), columns=tfidf.get_feature_names_out()) # tfidf.get_feature_names() doesn't exist.
+    print(df)
+
+
+def ngrams_example(phrases: List[str] = ["Assisti um filme ótimo"]) -> None:
+    wt = tokenize.WhitespaceTokenizer()
+
+    for phrase in phrases:
+        phrase_separated: str = wt.tokenize(phrase)
+        pairs = ngrams(phrase_separated, 2)
+        print(f"pairs is: {list(pairs)}")
+
+    tfidf = TfidfVectorizer(lowercase=False, max_features=50, ngram_range=(1,2))
+    characteristics = tfidf.fit_transform(phrases)
+    df = pd.DataFrame(characteristics.todense(), columns=tfidf.get_feature_names_out()) # tfidf.get_feature_names() doesn't exist.
+    print(df)

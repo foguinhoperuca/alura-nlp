@@ -1,6 +1,7 @@
-from typing import List, Any, Union
+from typing import List, Any, Union, Optional
 from decimal import Decimal
 from string import punctuation
+from enum import Enum, auto
 
 import warnings
 
@@ -8,7 +9,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from wordcloud import WordCloud
 from nltk import FreqDist, tokenize, corpus, RSLPStemmer
 import seaborn as sns
@@ -20,22 +21,39 @@ warnings.filterwarnings("ignore", "is_categorical_dtype")
 warnings.filterwarnings("ignore", "use_inf_as_na")
 logger = get_logger_factory()
 
+class VectorizerOption(Enum):
+    TFIDF_BRUTE_VECTORIZER = auto()
+    TFIDF_VECTORIZER = auto()
+    COUNT_VECTORIZER = auto()
 
-def classify_text(text: pd.DataFrame, column_text: str, column_classification: str, max_features: int = 50, random_state: int = 42) -> Decimal:
+
+def classify_text(text: pd.DataFrame, column_text: str = "removed_stopwords", column_classification: str = "classification", max_features: Optional[int] = 50, random_state: int = 42, vectorizer_option: VectorizerOption = VectorizerOption.COUNT_VECTORIZER) -> Decimal:
     """Classify text to determine sentiment.
     Vocabulary:
-    * Train -teach ML model.
+    * Train - teach ML model.
     * Test - use model to our purpose."""
+    # [CountVectorizer] For text_pt: without set max_features the accuracy is 0.8814395471087748. max_features=50 was recomended by tutor. Accuracy is 0.6583097452486858 with max_features=50.
 
-    # Without set max_features the accuracy is 0.8814395471087748. max_features=50 was recomended by tutor. Accuracy is 0.6583097452486858 with max_features=50
-    vectorizer = CountVectorizer(lowercase=False, max_features=max_features) if max_features is not None else CountVectorizer(lowercase=False)
+    vectorizer: Any[CountVectorizer, TfidfVectorizer] = None
+
+    if vectorizer_option == VectorizerOption.COUNT_VECTORIZER:
+        vectorizer = CountVectorizer(lowercase=False, ngram_range = (1,2), max_features=max_features) if max_features is not None else CountVectorizer(lowercase=False, ngram_range = (1,2))
+    elif vectorizer_option == VectorizerOption.TFIDF_VECTORIZER:
+        vectorizer = TfidfVectorizer(lowercase=False, ngram_range = (1,2), max_features=max_features) if max_features is not None else TfidfVectorizer(lowercase=False, ngram_range = (1,2))
+    else:
+        raise Exception(f"Unused vectorizer_option: {vectorizer_option}")
+
     bag_of_words = vectorizer.fit_transform(text[column_text])
     train, train_test, train_class, test_class = train_test_split(bag_of_words, text[column_classification], random_state=random_state)
-    logistic_regression = LogisticRegression() # default is: solver='lbfgs'
+    logistic_regression: LogisticRegression = LogisticRegression() # default is: solver='lbfgs'
     logistic_regression.fit(train, train_class)
-    accuracy = logistic_regression.score(train_test, test_class)
+    accuracy: Decimal = logistic_regression.score(train_test, test_class)
 
-    logger.info(f"Accuracy found was: {accuracy}")
+    weights: pd.DataFrame = pd.DataFrame(logistic_regression.coef_[0].T, index=vectorizer.get_feature_names_out()) # get_feature_names doesn't exist anymore
+    
+    logger.debug(f"nlargest (10): {weights.nlargest(10, 0)}")
+    logger.debug(f"nsmallest (10): {weights.nsmallest(10, 0)}")
+    logger.debug(f"Accuracy found was: {accuracy} vectorizer_option: {vectorizer_option} max_features: {max_features}")
 
     return accuracy
 
@@ -86,8 +104,7 @@ def remove_stopwords(opnions: pd.core.series.Series, meaningless_words: Union[Li
     use basic stopwords from nltk corpus and white space tokenize. Also,
     remove punctuation and accents and use all words in lower case."""
 
-    # TODO add more punctuation as ü to be cleaned
+    # FIXME lower, remove accent (and all pre-process) is applied in opinion too or only in meaningless words?! Apply lower to corpus in meaningless_words
     meaningless_words = [punct for punct in punctuation] + list(set(corpus.stopwords.words("portuguese") + [unidecode.unidecode(stopwords) for stopwords in corpus.stopwords.words("portuguese")])) if meaningless_words is None else meaningless_words
 
-    # FIXME lower, remove accent (and all pre-process) is applied in opion too or only in meaningless words?!
-    return [' '.join([word if stemmer is None else stemmer.stem(word) for word in wt.tokenize(opnion.lower() if lower else opnion) if word not in meaningless_words]) for opnion in opnions]
+    return [' '.join([word if stemmer is None else stemmer.stem(word) for word in wt.tokenize(unidecode.unidecode(opnion.lower()) if lower else unidecode.unidecode(opnion)) if word not in meaningless_words]) for opnion in opnions]
