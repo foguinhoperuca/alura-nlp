@@ -86,6 +86,7 @@ def remove_stopwords(opnions: pd.core.series.Series, meaningless_words: Union[Li
     use basic stopwords from nltk corpus and white space tokenize. Also,
     remove punctuation and accents and use all words in lower case."""
 
+    # TODO add more punctuation as ü to be cleaned
     meaningless_words = [punct for punct in punctuation] + list(set(corpus.stopwords.words("portuguese") + [unidecode.unidecode(stopwords) for stopwords in corpus.stopwords.words("portuguese")])) if meaningless_words is None else meaningless_words
 
     # FIXME lower, remove accent (and all pre-process) is applied in opion too or only in meaningless words?!

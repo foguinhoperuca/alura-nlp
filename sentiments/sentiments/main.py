@@ -49,18 +49,23 @@ if __name__ == "__main__":
         logger.info("Removed stopwords without lower and stemmer")
 
         print(reviews["text_pt"][0])
-        print("...........................................")
+        print("........................................... text_pt")
         print(reviews["removed_stopwords"][0])
-        print("...........................................")
+        print("........................................... removed_stopwords")
         print(reviews["removed_stopwords_without_lower"][0])
-        print("...........................................")
+        print("........................................... removed_stopwords_without_lower")
         print(reviews["removed_stopwords_without_stemmer"][0])
-        print("...........................................")
+        print("........................................... removed_stopwords_without_stemmer")
         print(reviews["removed_stopwords_without_lower_stemmer"][0])
+        print("........................................... removed_stopwords_without_lower_stemmer")
         print("")
         print("")
 
         # FIXME WITHOUT LOWER: 0.6892033966841893; with lower: 0.6878285483218762. Why!? (no stemmer here)
+        # Classified text accuracy removed_stopwords is........................: 0.6955115244642135
+        # Classified text accuracy removed_stopwords_without_lower is..........: 0.6723008491710473
+        # Classified text accuracy removed_stopwords_without_stemmer is........: 0.6878285483218762
+        # Classified text accuracy removed_stopwords_without_lower_stemmer is..: 0.6892033966841893
         print(f"Classified text accuracy removed_stopwords is: {classify_text(reviews, 'removed_stopwords', 'classification')}")
         print(f"Classified text accuracy removed_stopwords_without_lower is: {classify_text(reviews, 'removed_stopwords_without_lower', 'classification')}")
         print(f"Classified text accuracy removed_stopwords_without_stemmer is: {classify_text(reviews, 'removed_stopwords_without_stemmer', 'classification')}")
